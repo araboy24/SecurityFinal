@@ -1,3 +1,4 @@
+import threading
 import tkinter as tk
 import socket
 from cryptography.fernet import Fernet
@@ -36,6 +37,9 @@ def start_client():
     receive_message()
 
 def start_server():
+    threading.Thread(target=start_server_thread).start()
+
+def start_server_thread():
     global client_socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(('127.0.0.1', 5555))  # Replace with the server's IP and port
@@ -46,6 +50,9 @@ def start_server():
 # Replace 'passphrase' with the shared password between Alice and Bob
 passphrase = "sharedpassword"
 shared_key = generate_key(passphrase)
+
+root = tk.Tk()
+root.title("Secure Chat")
 
 root = tk.Tk()
 root.title("Secure Chat")
