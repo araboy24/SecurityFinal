@@ -14,7 +14,7 @@ def get_shared_key(password):
     return shared_key
 
 
-pwd = '1qaz2wsx'
+pwd = '1qaz2wsx'  # the password piece can be edited to be encrypted when sent and the server will decrypt it
 alice_key = get_shared_key(pwd)
 alice_sent_message = 'Hello Bob!'
 ciphertext = alice_key.encrypt(alice_sent_message.encode())
