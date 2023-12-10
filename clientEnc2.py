@@ -7,7 +7,7 @@ from tkinter import messagebox
 
 from cryptography.fernet import Fernet
 
-import server
+from server import get_shared_key
 
 DARK_GREY = '#212121'
 DARK_BLUE = '#161e2e'
@@ -35,28 +35,40 @@ client_key = None
 #     print('shared key:',shared_key)
 #     return shared_key
 
-
+# this gets the shared key from server
 def listen_for_messages(client):
+    global client_key
+    recv_byte_key = client.recv(2048)
+    print('recvbytekey',recv_byte_key)
+
+    encoded_key = base64.urlsafe_b64encode(recv_byte_key)
+
+    client_key = Fernet(encoded_key)
+
+    # client_key = Fernet(base64.urlsafe_b64encode(recv_byte_key))
     while True:
-        # try:
-        message = client.recv(2048).decode('utf-8')
-        if message:
-            print(message)
-            username, content = message.split(': ', 1)
-            if client_key:
-                # try:
-                plaintext = client_key.decrypt(content.encode()).decode()
-                print(plaintext)
-                add_message(f"[{username}] {plaintext}")
-                # except Exception as e:
-                #     print("Decryption error:", e)
-            # else:
-            #     add_message(f"[{username}] {content}")  # If no client_key is set, show the message as is
-        else:
-            messagebox.showerror("Invalid Message", "Received an empty message")
-        # except Exception as e:
-        #     print("Error receiving message:", e)
-        #     break  # Break the loop on receiving errors
+        try:
+        # if client_key is None:
+        #     client_key = client.recv(2048).decode('utf-8')
+            message = client.recv(2048).decode('utf-8')
+            if message:
+                print(message)
+                username, content = message.split(': ', 1)
+                if client_key:
+                    try:
+                        plaintext = client_key.decrypt(content.encode()).decode()
+                        print(plaintext)
+                        add_message(f"[{username}] {message[len(username)+2:]}")
+                        add_message(f"[{username}] {plaintext}")
+                    except Exception as e:
+                        print("Decryption error:", e)
+                # else:
+                #     add_message(f"[{username}] {content}")  # If no client_key is set, show the message as is
+            else:
+                messagebox.showerror("Invalid Message", "Received an empty message")
+        except Exception as e:
+            print("Error receiving message:", e)
+            break  # Break the loop on receiving errors
 
 # def listen_for_messages(client):
 #     while True:
@@ -74,13 +86,14 @@ def listen_for_messages(client):
 
 
 def communicate_to_server(client):
-    global client_key
+    # global client_key
     username = username_textbox.get()
     password = password_textbox.get()
     if username != '' and password != '':
-        client_key = server.get_shared_key(password)
+        # client_key = get_shared_key(password)
         print('client_key', client_key)
-        client.sendall(username.encode())
+        data = username+'|'+password
+        client.sendall(data.encode())
     else:
         messagebox.showerror("Invalid", "Username and password cannot be empty")
 
@@ -111,6 +124,7 @@ def send_message():
     if message != '':
         try:
             ciphertext = client_key.encrypt(message.encode())
+            add_message(ciphertext.decode())
             client.sendall(ciphertext)
             message_textbox.delete(0, len(message))
         except Exception as e:
