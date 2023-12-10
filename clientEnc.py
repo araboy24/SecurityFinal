@@ -19,7 +19,7 @@ HOST = '127.0.0.1'
 PORT = 8888
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_key = None
+shared_key_from_server = None
 key1 = Fernet.generate_key()
 
 
@@ -42,7 +42,7 @@ def listen_for_messages(client):
 
 
 def communicate_to_server(client):
-    global client_key
+    global shared_key_from_server
     password = password_textbox.get()
     if password != '':
         client_key = get_shared_key(password)
@@ -76,7 +76,7 @@ def send_message():
     message = message_textbox.get()
     if message != '':
         try:
-            ciphertext = client_key.encrypt(message.encode())
+            ciphertext = shared_key_from_server.encrypt(message.encode())
             client.sendall(ciphertext)
             message_textbox.delete(0, len(message))
         except Exception as e:
