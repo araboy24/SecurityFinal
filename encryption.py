@@ -16,12 +16,19 @@ def get_shared_key(password):
 
 pwd = '1qaz2wsx'  # the password piece can be edited to be encrypted when sent and the server will decrypt it
 alice_key = get_shared_key(pwd)
-alice_sent_message = 'Hello Bob!'
-ciphertext = alice_key.encrypt(alice_sent_message.encode())
-print(ciphertext)
+alice_sent_message1 = 'Hello Bob!'
+alice_sent_message2 = 'Hello Bob!'
+ciphertext1 = alice_key.encrypt(alice_sent_message1.encode())
+ciphertext2 = alice_key.encrypt(alice_sent_message2.encode())
+print(ciphertext1)
+print(ciphertext2)
 
 bob_key = get_shared_key(pwd)
-bob_rec_message = ciphertext
-plaintext = bob_key.decrypt(bob_rec_message)
-print(bob_rec_message)
-print(plaintext.decode())
+bob_rec_message1 = ciphertext1
+bob_rec_message2 = ciphertext2
+plaintext1 = bob_key.decrypt(bob_rec_message1)
+print(bob_rec_message1)
+print(plaintext1.decode())
+plaintext2 = bob_key.decrypt(bob_rec_message2)
+print(bob_rec_message2)
+print(plaintext2.decode())
