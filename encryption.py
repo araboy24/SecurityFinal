@@ -21,6 +21,7 @@ ciphertext = alice_key.encrypt(alice_sent_message.encode())
 print(ciphertext)
 
 bob_key = get_shared_key(pwd)
+print(alice_key,bob_key)
 bob_rec_message = ciphertext
 plaintext = bob_key.decrypt(bob_rec_message)
 print(bob_rec_message)
