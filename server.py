@@ -9,7 +9,8 @@ PORT = 8888 # Port that server and clients connect to
 active_clients = [] # List of connected users
 stored_passwords = {}
 
-
+key1 = Fernet.generate_key()
+print('key1', key1)
 
 def get_shared_key(password):
     global stored_passwords
@@ -27,8 +28,6 @@ def get_shared_key(password):
     return shared_key
 
 def get_key():
-    key1 = Fernet.generate_key()
-    print('key1', key1)
     return key1
 
 # Sends message to single client
