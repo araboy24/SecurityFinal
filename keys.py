@@ -20,7 +20,7 @@ server_private_key = rsa.generate_private_key(
     key_size=2048
 )
 server_public_key = server_private_key.public_key()
-
+print('server public key',server_public_key)
 client_private_key = rsa.generate_private_key(
     public_exponent=65537,
     key_size=2048

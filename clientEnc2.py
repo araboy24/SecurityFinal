@@ -4,10 +4,12 @@ import threading
 import tkinter as tk
 from tkinter import scrolledtext
 from tkinter import messagebox
-
 from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
-from server import get_shared_key
+# from server import get_shared_key
 
 DARK_GREY = '#212121'
 DARK_BLUE = '#161e2e'
@@ -21,10 +23,18 @@ HOST = '127.0.0.1'
 PORT = 8888
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+event = threading.Event()
 
 # a random key is generated then XOR'd with the password to generate a new shared key
 # key1 = server.get_key()
 client_key = None
+server_public_key = None
+
+client_private_key = rsa.generate_private_key(
+    public_exponent=65537,
+    key_size=2048
+)
+client_public_key = client_private_key.public_key()
 
 
 # def get_shared_key(password):
@@ -38,6 +48,7 @@ client_key = None
 # this gets the shared key from server
 def listen_for_messages(client):
     global client_key
+
     recv_byte_key = client.recv(2048)
     print('recvbytekey',recv_byte_key)
 
@@ -84,15 +95,67 @@ def listen_for_messages(client):
 #         else:
 #             messagebox.showerror("Invalid Message", "Received an empty message")
 
+def get_server_public_key(client):
+    global server_public_key
+    try:
+        recv_bytes = client.recv(2048)
+        if recv_bytes:
+            server_public_key = serialization.load_pem_public_key(
+                recv_bytes,
+                backend=default_backend()
+            )
+            print('Server public key received successfully')
+        else:
+            print('No data received for server public key')
+    except ConnectionError as e:
+        print(f"Error receiving data: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+    print('Server public key:', server_public_key)
+    event.set()
+
+# def get_server_public_key(client):
+#     global server_public_key
+#     # receiving public server key
+#     print('about to recv public key from server')
+#     # Try to receive data from the server
+#     try:
+#         server_public_key = client.recv(2048)
+#         # Process the received public key here
+#
+#     except ConnectionError as e:
+#         print(f"Error receiving data: {e}")
+#         # Handle the error - close the connection, retry, or perform other error handling tasks
+#     except Exception as e:
+#         print(f"An unexpected error occurred: {e}")
+#         # Handle other unexpected exceptions
+#     print('server public key', server_public_key)
+
 
 def communicate_to_server(client):
-    # global client_key
+    print('waiting for get server key')
+    event.wait()
+    print('done waiting')
     username = username_textbox.get()
     password = password_textbox.get()
-    if username != '' and password != '':
+    # encrypted_password = password_textbox.get()
+    encrypted_password = server_public_key.encrypt(
+        password.encode('utf-8'),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    # Convert the encrypted password to Base64 encoded string
+    encrypted_password_base64 = base64.b64encode(encrypted_password).decode('utf-8')
+
+    print("Encrypted Password (Base64):", encrypted_password_base64)
+    print('encrypted password:', encrypted_password)
+    if username != '' and encrypted_password_base64 != '':
         # client_key = get_shared_key(password)
-        print('client_key', client_key)
-        data = username+'|'+password
+        # print('client_key', client_key)
+        data = username+' '+encrypted_password_base64
         client.sendall(data.encode())
     else:
         messagebox.showerror("Invalid", "Username and password cannot be empty")
@@ -107,13 +170,16 @@ def add_message(message):
 
 
 def connect():
+    global server_public_key
+
     try:
         # Connecting client to server
         client.connect((HOST, PORT))
         add_message("[SERVER] Successfully connected to server")
     except Exception as e:
         messagebox.showerror("Unable to connect to server", e)
-
+    # get_server_public_key(client)
+    threading.Thread(target=get_server_public_key, args=(client,)).start()
     communicate_to_server(client)
     username_textbox.config(state=tk.DISABLED)
     username_button.config(state=tk.DISABLED)

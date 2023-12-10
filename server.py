@@ -3,6 +3,8 @@ import socket
 import threading
 
 from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
 HOST = '127.0.0.1'
 PORT = 8888 # Port that server and clients connect to
@@ -11,6 +13,12 @@ active_clients = [] # List of connected users
 
 key1 = Fernet.generate_key()
 print('key1', key1)
+# Generate public and private keys for SERVER and CLIENT
+server_private_key = rsa.generate_private_key(
+    public_exponent=65537,
+    key_size=2048
+)
+server_public_key = server_private_key.public_key()
 
 def get_shared_key(password):
     # global stored_passwords
@@ -21,7 +29,7 @@ def get_shared_key(password):
     pwd_bytes = password.encode()  # changing pw string to bytes to perform bitwise operations
     padded_pwd = pwd_bytes.ljust(32, b'0')  # considering padding using random bytes but this is fine for now.
     shared_key = bytes(key1 ^ padded_pwd for key1, padded_pwd in zip(key1, padded_pwd))  # XOR
-    print(shared_key)
+    # print(shared_key)
     # shared_key = Fernet(base64.urlsafe_b64encode(shared_key))
     # print('shared key:',shared_key)
     # stored_passwords[password] = shared_key
@@ -36,28 +44,55 @@ def send_message_to_client(client, message):
 
 # Send message to connected clients
 def send_message_to_all(message, sender_username):
+    print('length of active_clients', len(active_clients))
     for user in active_clients:
         if user[0] == sender_username:
             continue
+        print(f'message {message} sent to {user[0]}')
         send_message_to_client(user[1], message)
 
 # Listens for messages from clients
 def listen_for_messages(client, username):
     while True:
         message = client.recv(2048).decode('utf-8')
+        print('new message', message)
+
         if message != '':
             final_message = username + ': ' + message
+            print('sending final message:',final_message)
             send_message_to_all(final_message, username)
         else:
             print("Message was empty")
 def client_handler(client):
+    serialized_public_key = server_public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    print('ser pub key', serialized_public_key)
+
+    client.sendall(serialized_public_key)
     # Server will listen for client message that contain username
     while True:
-        username, password = client.recv(2048).decode('utf-8').split('|')
+        username, encrypted_password_base64 = client.recv(2048).decode('utf-8').split(' ')
+        encrypted_password = base64.b64decode(encrypted_password_base64)
+        password = server_private_key.decrypt(
+            encrypted_password,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        ).decode()
+        print('enc pass 64 was',encrypted_password_base64)
+        print('enc pass was',encrypted_password)
+        print('dec pass is', password)
+        print('got user and pass')
         if username != '':
-            active_clients.append((username, client))
+            print('sending server_public_key')
+            # Serialize the public key to PEM format
 
-            print('sent shared key:',get_shared_key(password))
+            print('sent shared key:', get_shared_key(password))
+            active_clients.append((username, client))
             client.sendall(get_shared_key(password)) # this is what sends the key to client
             # send_message_to_all("SERVER: "+username+" added to the chat")
             break
