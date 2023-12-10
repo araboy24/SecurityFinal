@@ -3,6 +3,7 @@ import socket
 import threading
 
 from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
@@ -73,7 +74,13 @@ def client_handler(client):
     client.sendall(serialized_public_key)
     # Server will listen for client message that contain username
     while True:
-        username, encrypted_password_base64 = client.recv(2048).decode('utf-8').split(' ')
+        data = client.recv(2048).decode('utf-8')
+        print('data',data)
+        username, encrypted_password_base64, serialized_public_key_from_client = data.split(' ', 2)
+        client_public_key = serialization.load_pem_public_key(
+            serialized_public_key_from_client.encode(),
+            backend=default_backend()
+        )
         encrypted_password = base64.b64decode(encrypted_password_base64)
         password = server_private_key.decrypt(
             encrypted_password,
@@ -93,7 +100,19 @@ def client_handler(client):
 
             print('sent shared key:', get_shared_key(password))
             active_clients.append((username, client))
-            client.sendall(get_shared_key(password)) # this is what sends the key to client
+            og_server_shared_key = get_shared_key(password)
+            enc_server_shared_key = client_public_key.encrypt(
+                og_server_shared_key,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            )
+            enc_server_shared_key_base_64 = base64.b64encode(enc_server_shared_key).decode('utf-8')
+            # client.sendall(get_shared_key(password)) # this is what sends the key to client
+            print('sending shared encrypted key', enc_server_shared_key_base_64)
+            client.sendall(enc_server_shared_key_base_64.encode()) # sending string of encrypted shared key to client
             # send_message_to_all("SERVER: "+username+" added to the chat")
             break
         else:

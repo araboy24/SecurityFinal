@@ -35,6 +35,10 @@ client_private_key = rsa.generate_private_key(
     key_size=2048
 )
 client_public_key = client_private_key.public_key()
+serialized_public_key = client_public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
 
 
 # def get_shared_key(password):
@@ -49,12 +53,36 @@ client_public_key = client_private_key.public_key()
 def listen_for_messages(client):
     global client_key
 
+    # Receive the encrypted shared key from the server
     recv_byte_key = client.recv(2048)
-    print('recvbytekey',recv_byte_key)
+    enc_server_shared_key = base64.b64decode(recv_byte_key)
 
-    encoded_key = base64.urlsafe_b64encode(recv_byte_key)
+    try:
+        # Decrypt the encrypted shared key using the client's private key
+        decrypted_shared_key = client_private_key.decrypt(
+            enc_server_shared_key,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+        print('i got here1')
+        # Convert the decrypted shared key to a string or process it as needed
+        encoded_key = base64.urlsafe_b64encode(decrypted_shared_key)
 
-    client_key = Fernet(encoded_key)
+        client_key = Fernet(encoded_key)
+        print('i got here')
+        # Use the decrypted shared key for further operations
+        # ...
+
+    except Exception as e:
+        # Handle decryption failure
+        print("Decryption failed:", e)
+
+    # print('recvbytekey',recv_byte_key)
+
+
 
     # client_key = Fernet(base64.urlsafe_b64encode(recv_byte_key))
     while True:
@@ -155,7 +183,7 @@ def communicate_to_server(client):
     if username != '' and encrypted_password_base64 != '':
         # client_key = get_shared_key(password)
         # print('client_key', client_key)
-        data = username+' '+encrypted_password_base64
+        data = username+' '+encrypted_password_base64+' '+serialized_public_key.decode()
         client.sendall(data.encode())
     else:
         messagebox.showerror("Invalid", "Username and password cannot be empty")
