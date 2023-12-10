@@ -27,7 +27,7 @@ event = threading.Event()
 
 # a random key is generated then XOR'd with the password to generate a new shared key
 # key1 = server.get_key()
-client_key = None
+shared_key_from_server = None
 server_public_key = None
 
 client_private_key = rsa.generate_private_key(
@@ -51,7 +51,7 @@ serialized_public_key = client_public_key.public_bytes(
 
 # this gets the shared key from server
 def listen_for_messages(client):
-    global client_key
+    global shared_key_from_server
 
     # Receive the encrypted shared key from the server
     recv_byte_key = client.recv(2048)
@@ -217,7 +217,7 @@ def send_message():
     message = message_textbox.get()
     if message != '':
         try:
-            ciphertext = client_key.encrypt(message.encode())
+            ciphertext = shared_key_from_server.encrypt(message.encode())
             add_message(ciphertext.decode())
             client.sendall(ciphertext)
             message_textbox.delete(0, len(message))
