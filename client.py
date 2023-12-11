@@ -149,6 +149,7 @@ def connect():
     threading.Thread(target=get_server_public_key, args=(client,)).start()
     communicate_to_server(client)
     username_textbox.config(state=tk.DISABLED)
+    password_textbox.config(state=tk.DISABLED)
     username_button.config(state=tk.DISABLED)
 
 
