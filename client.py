@@ -9,7 +9,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
-DARK_GREY = '#212121'
+GRAY = '#212121'
 DARK_BLUE = '#161e2e'
 BLUE = '#4a7ce0'
 WHITE = 'white'
@@ -37,7 +37,7 @@ serialized_public_key = client_public_key.public_bytes(
 )
 
 
-# this gets the shared key from server
+# Gets the shared key from server
 def listen_for_messages(client):
     global shared_key_from_server
 
@@ -99,14 +99,11 @@ def get_server_public_key(client):
         print(f"Error receiving data: {e}")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-    print('Server public key:', server_public_key)
     event.set()
 
 
 def communicate_to_server(client):
-    print('waiting for get server key')
     event.wait()
-    print('done waiting')
     username = username_textbox.get()
     password = password_textbox.get()
     encrypted_password = server_public_key.encrypt(
@@ -120,8 +117,6 @@ def communicate_to_server(client):
     # Convert the encrypted password to Base64 encoded string
     encrypted_password_base64 = base64.b64encode(encrypted_password).decode('utf-8')
 
-    print("Encrypted Password (Base64):", encrypted_password_base64)
-    print('encrypted password:', encrypted_password)
     if username != '' and encrypted_password_base64 != '':
         data = username + ' ' + encrypted_password_base64 + ' ' + serialized_public_key.decode()
         client.sendall(data.encode())
@@ -179,23 +174,23 @@ root.grid_rowconfigure(1, weight=1)
 root.grid_rowconfigure(2, weight=4)
 root.grid_rowconfigure(3, weight=1)
 
-top_frame_username = tk.Frame(root, width=600, height=100, bg=DARK_GREY)
-top_frame_password = tk.Frame(root, width=600, height=100, bg=DARK_GREY)
+top_frame_username = tk.Frame(root, width=600, height=100, bg=GRAY)
+top_frame_password = tk.Frame(root, width=600, height=100, bg=GRAY)
 middle_frame = tk.Frame(root, width=600, height=400)
-bottom_frame = tk.Frame(root, width=600, height=100, bg=DARK_GREY)
+bottom_frame = tk.Frame(root, width=600, height=100, bg=GRAY)
 
 top_frame_username.grid(row=0, column=0, sticky=tk.NSEW)
 top_frame_password.grid(row=1, column=0, sticky=tk.NSEW)
 middle_frame.grid(row=2, column=0, sticky=tk.NSEW)
 bottom_frame.grid(row=3, column=0, sticky=tk.NSEW)
 
-username_label = tk.Label(top_frame_username, text="Enter username:", font=LARGE_FONT, bg=DARK_GREY, fg=WHITE)
+username_label = tk.Label(top_frame_username, text="Enter username:", font=LARGE_FONT, bg=GRAY, fg=WHITE)
 username_label.pack(side=tk.LEFT, padx=10)
 
 username_textbox = tk.Entry(top_frame_username, font=LARGE_FONT, bg=DARK_BLUE, fg=WHITE, width=20)
 username_textbox.pack(side=tk.LEFT)
 
-password_label = tk.Label(top_frame_password, text="Enter password:", font=LARGE_FONT, bg=DARK_GREY, fg=WHITE)
+password_label = tk.Label(top_frame_password, text="Enter password:", font=LARGE_FONT, bg=GRAY, fg=WHITE)
 password_label.pack(side=tk.LEFT, padx=10)
 
 password_textbox = tk.Entry(top_frame_password, font=LARGE_FONT, bg=DARK_BLUE, fg=WHITE, width=20)
@@ -203,9 +198,6 @@ password_textbox.pack(side=tk.LEFT)
 
 username_button = tk.Button(top_frame_password, text="Join", font=LARGE_FONT, bg=BLUE, fg=WHITE, command=connect)
 username_button.pack(side=tk.LEFT, padx=15)
-#
-# password_button = tk.Button(top_frame_password, text="Get Key", font=LARGE_FONT, bg=BLUE, fg=WHITE, command=connect)
-# password_button.pack(side=tk.LEFT, padx=15)
 
 message_textbox = tk.Entry(bottom_frame, font=LARGE_FONT, bg=DARK_BLUE, fg=WHITE, width=38)
 message_textbox.pack(side=tk.LEFT, padx=10)
